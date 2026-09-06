@@ -1,8 +1,8 @@
 // Package examplestructkind is the charly example class:kind plugin (F5) — an importable, dual-placement root package:
 // it serves the `examplestructkind` STRUCTURAL entity KIND over go-plugin gRPC. Unlike the FLAT
 // kind (candy/plugin-example-kind, F4 — body → opaque uf.PluginKinds), a STRUCTURAL kind's
-// OpLoad returns a spec.Deploy (FleetNode) MEMBER TREE that the host folds into uf.Fleet — the
-// SAME map a builtin structural kind (pod/group/candy) populates in-proc — so the entity
+// OpLoad returns a spec.Deploy whose ordered MEMBER TREE the host folds into uf.Fleet — the
+// SAME tree a builtin structural kind (pod/group/candy) populates in-proc — so the entity
 // participates in deploy/check exactly like a builtin. It declares Structural:true in Describe.
 //
 // F5 authored-member INPUT-threading: the AUTHORED resource-member children of the kind node are
@@ -10,9 +10,9 @@
 // truth) and threaded to this plugin's OpLoad via op.Env (spec.StructuralKindLoadEnv); the plugin
 // decodes only its kind-specific scalar body from op.Params (closed against #ExamplestructkindInput)
 // and ATTACHES the host-threaded members to its reply — so the reconstructed uf.Fleet carries the
-// AUTHORED member tree (peers, nested children, cross-member ${HOST:…} checks), identical to a
-// builtin group. (An earlier version SYNTHESIZED a single member from `marker`; that never proved
-// authored-member reconstruction — the whole point of F5 and the group/substrate externalizations.)
+// AUTHORED member tree, identical to a builtin group. (An earlier version SYNTHESIZED a single
+// member from `marker`; that never proved authored-member reconstruction — the whole point of F5
+// and the group/substrate externalizations.)
 //
 // NOT in compiled_plugins (out-of-process only): the witness that a plugin the loader was not
 // built with can reconstruct an AUTHORED uf.Fleet member tree over the wire. The structural
@@ -25,6 +25,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
+	"sort"
 
 	"github.com/opencharly/sdk"
 	pb "github.com/opencharly/spec/proto"
@@ -61,12 +62,13 @@ type structkindBody struct {
 	Description string `json:"description,omitempty"`
 }
 
-// Invoke handles OpLoad: decode the kind-specific scalar body from op.Params, ATTACH the authored
-// member tree the host pre-decoded + threaded via op.Env (F5 authored-member input-threading), and
-// return a TARGETLESS spec.Deploy whose Members are those AUTHORED members — proving the authored
-// member subtree round-trips through the plugin into the tree the host folds into uf.Fleet,
-// identical to a builtin group's in-proc decode. (The former version SYNTHESIZED a single member
-// from `marker`; it never exercised authored-member reconstruction — the whole point of F5.)
+// Invoke handles OpLoad: decode the kind-specific scalar body from op.Params, reconstruct the
+// authored member tree the host pre-decoded + threaded via op.Env (F5 authored-member
+// input-threading) into the ONE ordered spec.Deploy.Member tree, and return a TARGETLESS
+// spec.Deploy — proving the authored member subtree round-trips through the plugin into the tree
+// the host folds into uf.Fleet, identical to a builtin group's in-proc decode. (The former
+// version SYNTHESIZED a single member from `marker`; it never exercised authored-member
+// reconstruction — the whole point of F5.)
 func (provider) Invoke(_ context.Context, req *pb.InvokeRequest) (*pb.InvokeReply, error) {
 	if req.GetOp() != sdk.OpLoad {
 		return nil, fmt.Errorf("examplestructkind: unsupported op %q (only %q)", req.GetOp(), sdk.OpLoad)
@@ -79,8 +81,8 @@ func (provider) Invoke(_ context.Context, req *pb.InvokeRequest) (*pb.InvokeRepl
 	}
 	// F5 authored-member input-threading: the host pre-decoded the authored resource-member
 	// children (via the core buildFleetNode recursion — the SAME source the builtin path uses)
-	// and threaded them in op.Env. Attach them to the reply so runPluginKind folds a COMPLETE
-	// Fleet (with the authored members) into uf.Fleet.
+	// and threaded them in op.Env. Reconstruct them into the reply's ordered member tree so
+	// runPluginKind folds a COMPLETE Fleet (with the authored members) into uf.Fleet.
 	var env spec.StructuralKindLoadEnv
 	if len(req.GetEnvJson()) > 0 {
 		if err := json.Unmarshal(req.GetEnvJson(), &env); err != nil {
@@ -91,14 +93,27 @@ func (provider) Invoke(_ context.Context, req *pb.InvokeRequest) (*pb.InvokeRepl
 	if desc == "" && in.Marker != "" {
 		desc = "examplestructkind:" + in.Marker
 	}
-	// A TARGETLESS structural entity (Target "") — its authored members are PEERS (Members),
-	// exactly like a builtin group. The kind-specific + deploy-config scalars ride op.Params;
-	// the authored member tree rides op.Env (host-pre-decoded, input-threaded).
+	// A TARGETLESS structural entity (Target "") — its authored members are PEERS
+	// (deploy-level, Alongside), exactly like a builtin group. Reconstruct the ONE ordered
+	// member tree (spec.Deploy.Member): each env entry becomes a Member stamped Position
+	// deploy-level — the derived class the former dual Members map encoded — so the host fold
+	// consults the tree positionally (DeployLevelMembers / MemberByName / HasMembers), never a
+	// dual map. The kind-specific + deploy-config scalars ride op.Params; the authored member
+	// tree rides op.Env (host-pre-decoded, input-threaded). The env carries a map, so the
+	// authored order is unavailable this side: the tree is emitted in sorted-name order — the
+	// deterministic canonical order.
 	dep := spec.Deploy{
 		Description: desc,
 		Lifecycle:   in.Lifecycle,
 		Disposable:  in.Disposable,
-		Members:     env.Members,
+	}
+	names := make([]string, 0, len(env.Members))
+	for name := range env.Members {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		dep.Member = append(dep.Member, spec.Member{Name: name, Position: spec.PositionDeployLevel, Node: env.Members[name]})
 	}
 	out, err := json.Marshal(dep)
 	if err != nil {
