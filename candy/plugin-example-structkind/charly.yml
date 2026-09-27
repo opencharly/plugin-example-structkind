@@ -1,7 +1,5 @@
-version: 2026.232.0520
 plugin-example-structkind:
     candy:
-        version: 2026.182.0440
         description: |-
             Reference OUT-OF-TREE charly STRUCTURAL class:kind plugin (F5) — a standalone Go
             module serving the `examplestructkind` entity KIND over go-plugin gRPC. Unlike the
