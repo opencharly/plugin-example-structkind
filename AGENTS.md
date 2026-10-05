@@ -22,7 +22,7 @@ Canonical files:
 
 - `/charly-internals:plugin` — the plugin authoring reference: the `plugin:`
   block, the unified Provider model (incl. the structural `kind` class and the
-  `uf.Fleet` fold), the per-plugin CUE-schema contract, placement.
+  `uf.Deploy` fold), the per-plugin CUE-schema contract, placement.
 - `/charly-internals:git-workflow` — before any git/PR action.
 
 ## Build / validate / test
@@ -42,7 +42,7 @@ Canonical files:
   `schema/examplestructkind.cue` **together**.
 - The plugin is **out-of-process only** (deliberately not in
   `compiled_plugins:`); do not add it to the compiled set — it exists to witness
-  the wire reconstruction of an authored `uf.Fleet` member tree.
+  the wire reconstruction of an authored `uf.Deploy` member tree.
 - The authored member children arrive host-pre-decoded via `op.Env`; only the
   kind-specific scalar body arrives via `op.Params` (closed against the schema).
   Do not synthesize members — attach the host-threaded ones.

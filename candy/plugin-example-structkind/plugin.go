@@ -1,21 +1,21 @@
 // Package examplestructkind is the charly example class:kind plugin (F5) — an importable, dual-placement root package:
 // it serves the `examplestructkind` STRUCTURAL entity KIND over go-plugin gRPC. Unlike the FLAT
 // kind (candy/plugin-example-kind, F4 — body → opaque uf.PluginKinds), a STRUCTURAL kind's
-// OpLoad returns a spec.Deploy whose ordered MEMBER TREE the host folds into uf.Fleet — the
+// OpLoad returns a spec.Deploy whose ordered MEMBER TREE the host folds into uf.Deploy — the
 // SAME tree a builtin structural kind (pod/group/candy) populates in-proc — so the entity
 // participates in deploy/check exactly like a builtin. It declares Structural:true in Describe.
 //
 // F5 authored-member INPUT-threading: the AUTHORED resource-member children of the kind node are
-// pre-decoded HOST-SIDE (via the core buildFleetNode recursion — the one member-decode source of
+// pre-decoded HOST-SIDE (via the core buildDeployNode recursion — the one member-decode source of
 // truth) and threaded to this plugin's OpLoad via op.Env (spec.StructuralKindLoadEnv); the plugin
 // decodes only its kind-specific scalar body from op.Params (closed against #ExamplestructkindInput)
-// and ATTACHES the host-threaded members to its reply — so the reconstructed uf.Fleet carries the
+// and ATTACHES the host-threaded members to its reply — so the reconstructed uf.Deploy carries the
 // AUTHORED member tree, identical to a builtin group. (An earlier version SYNTHESIZED a single
 // member from `marker`; that never proved authored-member reconstruction — the whole point of F5
 // and the group/substrate externalizations.)
 //
 // NOT in compiled_plugins (out-of-process only): the witness that a plugin the loader was not
-// built with can reconstruct an AUTHORED uf.Fleet member tree over the wire. The structural
+// built with can reconstruct an AUTHORED uf.Deploy member tree over the wire. The structural
 // companion of the flat kind plugin; this is the channel the group/pod/vm/kubernetes/local/android/candy
 // externalizations reuse.
 package examplestructkind
@@ -42,7 +42,7 @@ func NewProvider() pb.ProviderServer { return &provider{} }
 
 // NewMeta advertises the STRUCTURAL kind capability (Class "kind", word "examplestructkind",
 // Structural:true) via sdk.NewMeta → BuildCapabilities — the F5 flag that makes the host fold
-// its OpLoad reply into uf.Fleet.
+// its OpLoad reply into uf.Deploy.
 func NewMeta() pb.PluginMetaServer {
 	return sdk.NewMeta(calver,
 		[]sdk.ProvidedCapability{{Class: "kind", Word: "examplestructkind", InputDef: "#ExamplestructkindInput", Structural: true}},
@@ -66,7 +66,7 @@ type structkindBody struct {
 // authored member tree the host pre-decoded + threaded via op.Env (F5 authored-member
 // input-threading) into the ONE ordered spec.Deploy.Member tree, and return a TARGETLESS
 // spec.Deploy — proving the authored member subtree round-trips through the plugin into the tree
-// the host folds into uf.Fleet, identical to a builtin group's in-proc decode. (The former
+// the host folds into uf.Deploy, identical to a builtin group's in-proc decode. (The former
 // version SYNTHESIZED a single member from `marker`; it never exercised authored-member
 // reconstruction — the whole point of F5.)
 func (provider) Invoke(_ context.Context, req *pb.InvokeRequest) (*pb.InvokeReply, error) {
@@ -80,9 +80,9 @@ func (provider) Invoke(_ context.Context, req *pb.InvokeRequest) (*pb.InvokeRepl
 		}
 	}
 	// F5 authored-member input-threading: the host pre-decoded the authored resource-member
-	// children (via the core buildFleetNode recursion — the SAME source the builtin path uses)
+	// children (via the core buildDeployNode recursion — the SAME source the builtin path uses)
 	// and threaded them in op.Env. Reconstruct them into the reply's ordered member tree so
-	// runPluginKind folds a COMPLETE Fleet (with the authored members) into uf.Fleet.
+	// runPluginKind folds a COMPLETE Deploy (with the authored members) into uf.Deploy.
 	var env spec.StructuralKindLoadEnv
 	if len(req.GetEnvJson()) > 0 {
 		if err := json.Unmarshal(req.GetEnvJson(), &env); err != nil {
