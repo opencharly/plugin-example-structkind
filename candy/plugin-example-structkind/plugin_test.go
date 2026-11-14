@@ -28,8 +28,10 @@ func invoke(t *testing.T, req *pb.InvokeRequest) spec.Deploy {
 }
 
 func TestInvokeReconstructsMemberTree(t *testing.T) {
+	// One member carries a DISTINGUISHING field: an empty body cannot tell a real decode
+	// from a no-op, so the projection is asserted below.
 	env, err := json.Marshal(spec.StructuralKindLoadEnv{Members: map[string]spec.RawBody{
-		"pg":    spec.RawBody(`{}`),
+		"pg":    spec.RawBody(`{"from":"postgresql:16"}`),
 		"cache": spec.RawBody(`{}`),
 	}})
 	if err != nil {
@@ -56,6 +58,15 @@ func TestInvokeReconstructsMemberTree(t *testing.T) {
 		}
 		if m.Node == nil {
 			t.Errorf("member %q: nil Node", m.Name)
+			continue
+		}
+		// The bytes must be PROJECTED into the contract node, not dropped: the member that
+		// carried a `from` field must come back with it.
+		if m.Name == "pg" && m.Node.From != "postgresql:16" {
+			t.Errorf("member pg: From = %q, want the decoded %q (bytes were not projected)", m.Node.From, "postgresql:16")
+		}
+		if m.Name == "cache" && m.Node.From != "" {
+			t.Errorf("member cache: From = %q, want empty", m.Node.From)
 		}
 	}
 	if dep.InSubstrateMembers() != nil {
