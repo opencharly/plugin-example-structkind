@@ -113,7 +113,13 @@ func (provider) Invoke(_ context.Context, req *pb.InvokeRequest) (*pb.InvokeRepl
 	}
 	sort.Strings(names)
 	for _, name := range names {
-		dep.Member = append(dep.Member, spec.Member{Name: name, Position: spec.PositionDeployLevel, Node: env.Members[name]})
+		// The members channel is OPAQUE BYTES (D-SCH-7): decode each pre-decoded node back
+		// into the contract's projection before it joins the ordered tree.
+		var node spec.Deploy
+		if err := json.Unmarshal(env.Members[name], &node); err != nil {
+			return nil, fmt.Errorf("examplestructkind: decode member %q: %w", name, err)
+		}
+		dep.Member = append(dep.Member, spec.Member{Name: name, Position: spec.PositionDeployLevel, Node: &node})
 	}
 	out, err := json.Marshal(dep)
 	if err != nil {

@@ -28,9 +28,9 @@ func invoke(t *testing.T, req *pb.InvokeRequest) spec.Deploy {
 }
 
 func TestInvokeReconstructsMemberTree(t *testing.T) {
-	env, err := json.Marshal(spec.StructuralKindLoadEnv{Members: map[string]*spec.Deploy{
-		"pg":    {},
-		"cache": {},
+	env, err := json.Marshal(spec.StructuralKindLoadEnv{Members: map[string]spec.RawBody{
+		"pg":    spec.RawBody(`{}`),
+		"cache": spec.RawBody(`{}`),
 	}})
 	if err != nil {
 		t.Fatalf("marshal env: %v", err)
